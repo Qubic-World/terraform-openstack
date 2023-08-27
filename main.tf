@@ -10,6 +10,7 @@ terraform {
 
 provider "openstack" {
   auth_url    = var.auth_url
+  user_id     = var.user_id
   domain_name = var.domain_name
   tenant_id   = var.tenant_id
   user_name   = var.user_name
