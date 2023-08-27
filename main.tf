@@ -5,16 +5,8 @@ terraform {
       source  = "terraform-provider-openstack/openstack"
       version = "~> 1.49.0"
     }
-/*    selectel = {
-      source  = "selectel/selectel"
-      version = "~> 3.9.0"
-    }*/
   }
 }
-
-/*provider "selectel" {
-  token = var.selectel_token
-}*/
 
 provider "openstack" {
   auth_url    = var.auth_url
@@ -34,8 +26,8 @@ locals {
 #=========== SSH ==============
 
 resource "openstack_compute_keypair_v2" "keypair" {
-  name       = var.ssh_name
-  region     = var.region
+  name   = var.ssh_name
+  region = var.region
   #  public_key = var.ssh_public_key
   public_key = local.ssh_public
 }
@@ -109,7 +101,7 @@ resource "openstack_blockstorage_volume_v3" "volume_server" {
   volume_type          = var.volume_type
   availability_zone    = var.az_zone
   enable_online_resize = true
-  
+
   lifecycle {
     ignore_changes = [image_id]
   }
@@ -118,30 +110,30 @@ resource "openstack_blockstorage_volume_v3" "volume_server" {
 resource "openstack_compute_instance_v2" "server_tf" {
   count = var.instance_count
 
-  name = "qiner-${openstack_compute_flavor_v2.flavor_server.vcpus}-selectel_${count.index}"
+  name              = "qiner-${openstack_compute_flavor_v2.flavor_server.vcpus}-selectel_${count.index}"
   flavor_id         = openstack_compute_flavor_v2.flavor_server.id
   key_pair          = openstack_compute_keypair_v2.keypair.id
   availability_zone = var.az_zone
-  
+
   network {
     uuid = openstack_networking_network_v2.network_tf.id
   }
-  
+
   block_device {
     uuid             = openstack_blockstorage_volume_v3.volume_server[count.index].id
     source_type      = "volume"
     destination_type = "volume"
     boot_index       = 0
   }
-  
+
   vendor_options {
     ignore_resize_confirmation = true
   }
-  
+
   lifecycle {
     ignore_changes = [image_id]
   }
-  
+
   tags = [
     "preemptible"
   ]

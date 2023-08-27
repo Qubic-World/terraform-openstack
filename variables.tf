@@ -30,13 +30,12 @@ variable "user_name" {
 variable "password" {
   description = "OpenStack user password"
   type        = string
-
 }
 
 variable "region" {
   description = "Pool where the infrastructure will be deployed: https://docs.selectel.ru/control-panel-actions/selectel-infrastructure/"
   type        = string
-  default = ""
+  default     = ""
 }
 
 variable "az_zone" {
@@ -53,22 +52,22 @@ variable "volume_type" {
 #=========== SSH ==============
 
 variable "ssh_name" {
-  type = string
+  type    = string
   default = "qiner_ssh"
 }
 
 variable "ssh_user_name" {
-  type = string
+  type    = string
   default = "root"
 }
 
 variable "ssh_private_key_path" {
-  type = string
+  type    = string
   default = "./.ssh/id_rsa"
 }
 
 variable "ssh_public_key_path" {
-  type = string
+  type    = string
   default = "./.ssh/id_rsa.pub"
 }
 
