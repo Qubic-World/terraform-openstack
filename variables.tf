@@ -112,3 +112,8 @@ variable "instance_cpus" {
   description = "Number of cores for instances"
   type        = string
 }
+
+variable "instance_ram" {
+  description = "Number of RAM in MB"
+  type        = string
+}

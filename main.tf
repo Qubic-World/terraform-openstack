@@ -27,46 +27,57 @@ locals {
 #=========== SSH ==============
 
 resource "openstack_compute_keypair_v2" "keypair" {
-  name   = var.ssh_name
-  region = var.region
-  #  public_key = var.ssh_public_key
+  name       = var.ssh_name
+  region     = var.region
   public_key = local.ssh_public
 }
 
 #=========== Network ==============
 
 resource "openstack_networking_router_v2" "router_tf" {
-  name                = "router_tf"
-  external_network_id = data.openstack_networking_network_v2.external_net.id
+  name                = "qiner_nat"
+  external_network_id = data.openstack_networking_network_v2.qiner_external_network.id
 }
 
-data "openstack_networking_network_v2" "external_net" {
+data "openstack_networking_network_v2" "qiner_external_network" {
   name = "external-network"
 }
 
-resource "openstack_networking_network_v2" "network_tf" {
+// Create Inner network
+resource "openstack_networking_network_v2" "qiner_inner_network" {
+  name = "qiner-inner-network"
 }
 
-resource "openstack_networking_subnet_v2" "subnet_tf" {
-  network_id = openstack_networking_network_v2.network_tf.id
-  name       = "subnet_tf"
+// Defining the subnet for the internal network
+resource "openstack_networking_subnet_v2" "qiner_subnet" {
+  network_id = openstack_networking_network_v2.qiner_inner_network.id
+  name       = "qiner_subnet"
   cidr       = var.network_cidr
 }
 
 resource "openstack_networking_router_interface_v2" "router_interface_tf" {
   router_id = openstack_networking_router_v2.router_tf.id
-  subnet_id = openstack_networking_subnet_v2.subnet_tf.id
+  subnet_id = openstack_networking_subnet_v2.qiner_subnet.id
 }
 
 resource "openstack_networking_floatingip_v2" "fip_tf" {
+  count = var.instance_count
+
   pool = "external-network"
 }
 
 resource "openstack_compute_floatingip_associate_v2" "fip_tf" {
   count = var.instance_count
 
-  floating_ip = openstack_networking_floatingip_v2.fip_tf.address
-  instance_id = openstack_compute_instance_v2.server_tf[count.index].id
+  floating_ip = openstack_networking_floatingip_v2.fip_tf[count.index].address
+  instance_id = openstack_compute_instance_v2.qiner_instance[count.index].id
+}
+
+#=========== Group ==============
+
+resource "openstack_compute_servergroup_v2" "qiner_server_group" {
+  name     = "qiner-group"
+  policies = ["anti-affinity"]
 }
 
 #=========== Server ==============
@@ -84,7 +95,7 @@ resource "random_string" "random_name_server" {
 
 resource "openstack_compute_flavor_v2" "flavor_server" {
   name      = "qiner-${var.instance_cpus}-selectel${random_string.random_name_server.result}"
-  ram       = "65536"
+  ram       = var.instance_ram
   vcpus     = var.instance_cpus
   disk      = "0"
   is_public = "false"
@@ -108,7 +119,7 @@ resource "openstack_blockstorage_volume_v3" "volume_server" {
   }
 }
 
-resource "openstack_compute_instance_v2" "server_tf" {
+resource "openstack_compute_instance_v2" "qiner_instance" {
   count = var.instance_count
 
   name              = "qiner-${openstack_compute_flavor_v2.flavor_server.vcpus}-selectel_${count.index}"
@@ -117,7 +128,7 @@ resource "openstack_compute_instance_v2" "server_tf" {
   availability_zone = var.az_zone
 
   network {
-    uuid = openstack_networking_network_v2.network_tf.id
+    uuid = openstack_networking_network_v2.qiner_inner_network.id
   }
 
   block_device {
@@ -135,11 +146,15 @@ resource "openstack_compute_instance_v2" "server_tf" {
     ignore_changes = [image_id]
   }
 
+  scheduler_hints {
+    group = openstack_compute_servergroup_v2.qiner_server_group.id
+  }
+
+  # Preemptible server
   tags = [
     "preemptible"
   ]
 }
-
 
 resource "null_resource" "provision" {
   count = var.instance_count
@@ -154,5 +169,13 @@ resource "null_resource" "provision" {
   provisioner "file" {
     source      = "./scripts/${local.qiner_installer}"
     destination = "/tmp/${local.qiner_installer}"
+  }
+
+  provisioner "remote-exec" {
+    inline = [
+      "sudo chmod +x /tmp/${local.qiner_installer}",
+      "sudo /tmp/${local.qiner_installer}",
+      "sudo rm /tmp/${local.qiner_installer}"
+    ]
   }
 }
