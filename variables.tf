@@ -1,10 +1,3 @@
-#=========== Selectel ==============
-
-variable "selectel_token" {
-  description = "Account token (Selectel API key), it can be obtained by following the API Keys instructions: https://docs.selectel.ru/control-panel-actions/account/api-keys/"
-  type        = string
-}
-
 #=========== Openstack ==============
 
 variable "auth_url" {
