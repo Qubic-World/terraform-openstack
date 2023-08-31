@@ -56,3 +56,7 @@ terraform apply -auto-approve
 ```bash
 terraform destroy -auto-approve
 ```
+
+# Known issues
+
+If your country is under sanctions, you will need to run VNP before running `terraform init`
