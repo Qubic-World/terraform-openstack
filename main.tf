@@ -19,9 +19,11 @@ provider "openstack" {
 }
 
 locals {
-  qiner_installer = "qiner_installer.sh"
-  ssh_public      = file(var.ssh_public_key_path)
-  ssh_private     = file(var.ssh_private_key_path)
+  qiner_installer     = "qiner_installer.sh"
+  ssh_public          = file(var.ssh_public_key_path)
+  ssh_private         = file(var.ssh_private_key_path)
+  network_router_name = "qiner_nat_${var.network_external_name}"
+
 }
 
 #=========== SSH ==============
@@ -34,47 +36,14 @@ resource "openstack_compute_keypair_v2" "keypair" {
 
 #=========== Network ==============
 
-resource "openstack_networking_router_v2" "router_tf" {
-  name                = "qiner_nat"
-  external_network_id = data.openstack_networking_network_v2.qiner_external_network.id
-}
-
+# External network
 data "openstack_networking_network_v2" "qiner_external_network" {
   name = var.network_external_name
 }
 
-// Create Inner network
-resource "openstack_networking_network_v2" "qiner_inner_network" {
-  name = "qiner-inner-network"
-}
-
-// Defining the subnet for the internal network
-resource "openstack_networking_subnet_v2" "qiner_subnet" {
-  network_id = openstack_networking_network_v2.qiner_inner_network.id
-  name       = "qiner_subnet"
-  cidr       = var.network_cidr
-}
-
-resource "openstack_networking_router_interface_v2" "router_interface_tf" {
-  router_id = openstack_networking_router_v2.router_tf.id
-  subnet_id = openstack_networking_subnet_v2.qiner_subnet.id
-}
-
-resource "openstack_networking_floatingip_v2" "fip_tf" {
-  count = var.instance_count
-
-  pool = "external-network"
-}
-
-resource "openstack_compute_floatingip_associate_v2" "fip_tf" {
-  count = var.instance_count
-
-  floating_ip = openstack_networking_floatingip_v2.fip_tf[count.index].address
-  instance_id = openstack_compute_instance_v2.qiner_instance[count.index].id
-}
-
 #=========== Group ==============
 
+# Creating instances on different machines
 resource "openstack_compute_servergroup_v2" "qiner_server_group" {
   name     = "qiner-group"
   policies = ["anti-affinity"]
@@ -128,7 +97,7 @@ resource "openstack_compute_instance_v2" "qiner_instance" {
   availability_zone = var.az_zone
 
   network {
-    uuid = openstack_networking_network_v2.qiner_inner_network.id
+    uuid = data.openstack_networking_network_v2.qiner_external_network.id
   }
 
   block_device {
@@ -161,7 +130,7 @@ resource "null_resource" "provision" {
 
   connection {
     type        = "ssh"
-    host        = openstack_compute_floatingip_associate_v2.fip_tf[count.index].floating_ip
+    host        = openstack_compute_instance_v2.qiner_instance[count.index].access_ip_v4
     user        = var.ssh_user_name
     private_key = local.ssh_private
   }
