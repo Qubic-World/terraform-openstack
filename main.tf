@@ -40,7 +40,7 @@ resource "openstack_networking_router_v2" "router_tf" {
 }
 
 data "openstack_networking_network_v2" "qiner_external_network" {
-  name = "external-network"
+  name = var.network_external_name
 }
 
 // Create Inner network

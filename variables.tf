@@ -3,11 +3,13 @@
 variable "auth_url" {
   description = "(Optional; required if cloud is not specified) The Identity authentication URL. If omitted, the OS_AUTH_URL environment variable is used."
   type        = string
+  default     = ""
 }
 
 variable "domain_name" {
-  description = "Selectel account number (contract number). You can view it in the control panel in the upper right corner: https://my.selectel.ru/"
+  description = "(Optional) The Name of the Domain to scope to (Identity v3). If omitted, the following environment variables are checked (in this order): OS_DOMAIN_NAME"
   type        = string
+  default     = ""
 }
 
 variable "project_domain_name" {
@@ -91,6 +93,10 @@ variable "ssh_public_key_path" {
 #=========== Network ==============
 
 variable "network_cidr" {
+  type = string
+}
+
+variable "network_external_name" {
   type = string
 }
 
