@@ -46,7 +46,7 @@ data "openstack_networking_network_v2" "qiner_external_network" {
 # Creating instances on different machines
 resource "openstack_compute_servergroup_v2" "qiner_server_group" {
   name     = "qiner-group"
-  policies = ["anti-affinity"]
+  policies = ["soft-anti-affinity"]
 }
 
 #=========== Server ==============
@@ -60,6 +60,11 @@ data "openstack_images_image_v2" "ubuntu_image" {
 resource "random_string" "random_name_server" {
   length  = 5
   special = false
+}
+
+resource "random_string" "random_password" {
+  length  = 18
+  special = true
 }
 
 resource "openstack_compute_flavor_v2" "flavor_server" {
@@ -95,6 +100,7 @@ resource "openstack_compute_instance_v2" "qiner_instance" {
   flavor_id         = openstack_compute_flavor_v2.flavor_server.id
   key_pair          = openstack_compute_keypair_v2.keypair.id
   availability_zone = var.az_zone
+  admin_pass        = random_string.random_password
 
   network {
     uuid = data.openstack_networking_network_v2.qiner_external_network.id
